@@ -32,9 +32,17 @@
 
 ## 贡献本项目
 ### 克隆并安装依赖
+请先安装Python和Go, 可在对应语言官网下载安装
 ```
 git clone --recurse-submodules https://github.com/xqe2011/pinglunji
 pip install -r requirements.txt
+set GO111MODULE=on
+go install github.com/zeromicro/go-zero/tools/goctl@latest
+goctl env check --install --verbose --force
+```
+### 编译Proto
+```
+python -m tools.generate_proto
 ```
 ### 编译配置页面
 ```

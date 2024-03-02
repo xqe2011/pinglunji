@@ -1,5 +1,5 @@
 export type EngineConfig = {
-    "bili": {
+    "douyin": {
         "liveID": number,
     },
     "http": {

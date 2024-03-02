@@ -1,0 +1,74 @@
+{
+    "kvdb": {},
+    "engine": {
+        "douyin": {
+            "liveID": 21654925
+        },
+        "http": {
+            "token": "nuozimeownuozimeownuozimeow"
+        },
+        "remote": {
+            "enable": false,
+            "server": "wss://nuozi.club",
+            "password": "nuozimeow"
+        }
+    },
+    "dynamic": {
+        "system": {
+            "alertWhenMessagesQueueLonger": {
+                "enable": true,
+                "threshold": 50,
+                "interval": 30
+            }
+        },
+        "tts": {
+            "readSymbolEnable": true,
+            "speaker": "",
+            "volume": 100,
+            "voice": "Microsoft Huihui",
+            "rate": 100,
+            "history": {
+                "voice": "Microsoft Huihui",
+                "rate": 100,
+                "volume": 80
+            },
+            "japanese": {
+                "enable": true,
+                "voice": "Microsoft Haruka",
+                "rate": 100,
+                "volume": 100
+            }
+        },
+        "filter": {
+            "danmu": {
+                "enable": true,
+                "symbolEnable": true,
+                "emojiEnable": true,
+                "deduplicate": false,
+                "isFansMedalBelongToLive": false,
+                "fansMedalLevelBigger": 0,
+                "isFansMedalVIP": false,
+                "lengthShorter": 0,
+                "blacklistKeywords": [],
+                "blacklistUsers": [],
+                "whitelistUsers": [],
+                "whitelistKeywords": []
+            },
+            "gift": {
+                "enable": true,
+                "deduplicateTime": 10,
+                "moneyGiftPriceBigger": 0
+            },
+            "like": {
+                "enable": true,
+                "deduplicate": true
+            },
+            "welcome": {
+                "enable": true,
+                "isFansMedalBelongToLive": false,
+                "fansMedalGuardLevelBigger": 0,
+                "isFansMedalVIP": false
+            }
+        }
+    }
+}

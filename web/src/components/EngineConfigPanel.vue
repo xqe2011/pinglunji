@@ -5,7 +5,7 @@
         </v-card-title>
 
         <v-form class="overflow-auto">
-            <v-text-field v-model="config.bili.liveID" label="直播间号" aria-label="直播间号"></v-text-field>
+            <v-text-field v-model="config.douyin.liveID" label="直播间号" aria-label="直播间号"></v-text-field>
             <v-text-field v-model="config.http.token" label="HTTP令牌" aria-label="HTTP令牌"></v-text-field>
             <v-divider></v-divider>
 
@@ -53,7 +53,7 @@ import { getEngineConfig, setEngineConfig, onWSState, logout } from '@/services/
 
 const config = ref(undefined as unknown as EngineConfig);
 config.value = {
-    bili: {
+    douyin: {
         liveID: 0,
     },
     http: {
@@ -84,7 +84,7 @@ function onRead() {
 function onSave() {
     saving.value = true;
     /* 强制转换number类型 */
-    config.value.bili.liveID = Number(config.value.bili.liveID);
+    config.value.douyin.liveID = Number(config.value.douyin.liveID);
 
     setEngineConfig(config.value).then(val => {
         saving.value = false;

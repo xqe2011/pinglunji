@@ -41,6 +41,7 @@ appendDanmuFilteredStats = statsFunctionGenerator('danmu')
 appendGiftFilteredStats = statsFunctionGenerator('gift')
 appendWelcomeFilteredStats = statsFunctionGenerator('welcome')
 appendLikeFilteredStats = statsFunctionGenerator('like')
+appendSubscribeFilteredStats = statsFunctionGenerator('subscribe')
 
 def getDelay():
     global delaysQueue

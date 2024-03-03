@@ -22,8 +22,9 @@
                         <td v-if="raw.type == 'gift'">礼物</td>
                         <td v-if="raw.type == 'gift'">赠送了{{ raw.num }}个{{ raw.giftName }}</td>
                         
-                        <td v-if="raw.type == 'like' || raw.type == 'welcome'">其他</td>
+                        <td v-if="raw.type == 'like' || raw.type == 'subscribe' || raw.type == 'welcome'">其他</td>
                         <td v-if="raw.type == 'like'">点赞</td>
+                        <td v-if="raw.type == 'subscribe'">关注</td>
                         <td v-if="raw.type == 'welcome'">欢迎</td>
                     </tr>
                 </template>

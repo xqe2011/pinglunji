@@ -37,6 +37,9 @@
             <v-text-field type="number" v-model="config.filter.welcome.fansMedalLevelBigger" label="粉丝牌等级大于等于" aria-label="直播间朗读粉丝牌等级大于等于"></v-text-field>
             <v-divider></v-divider>
 
+            <v-switch v-model="config.filter.subscribe.enable" inset color="blue" label="启用关注朗读" aria-label="启用关注朗读"></v-switch>
+            <v-divider></v-divider>
+
             <v-switch v-model="config.system.alertWhenMessagesQueueLonger.enable" inset color="blue" label="启用弹幕延迟较高时自动播报" aria-label="启用弹幕延迟较高时自动播报"></v-switch>
             <v-text-field type="number" v-model="config.system.alertWhenMessagesQueueLonger.threshold" label="积压弹幕数量大于" aria-label="积压弹幕数量大于"></v-text-field>
             <v-text-field type="number" v-model="config.system.alertWhenMessagesQueueLonger.interval" label="播报间隔" aria-label="播报间隔"></v-text-field>
@@ -150,6 +153,9 @@ config.value = {
             isFansMedalBelongToLive: true,
             isFansMedalVIP: false,
             fansMedalLevelBigger: 0
+        },
+        subscribe: {
+            enable: true
         },
     }
 };

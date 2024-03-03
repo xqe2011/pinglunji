@@ -96,3 +96,9 @@ def filterLike(uid, uname):
             return False
         likedUids[uid] = True
     return True
+
+def filterSubscribe(uid, uname, isFansMedalBelongToLive, fansMedalLevel, fansMedalGuardLevel):
+    dynamicConfig = getJsonConfig()['dynamic']
+    if not dynamicConfig["filter"]["subscribe"]["enable"]:
+        return False
+    return True

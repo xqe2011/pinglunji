@@ -141,6 +141,8 @@ def messagesToText(msg):
         return f"感谢{msg['uname']}送出的{msg['num']}个{msg['giftName']}"
     elif msg['type'] == 'like':
         return f"感谢{msg['uname']}点赞"
+    elif msg['type'] == 'subscribe':
+        return f"感谢{msg['uname']}关注"
     elif msg['type'] == 'welcome':
         return f"欢迎{msg['uname']}进入直播间"
     elif msg['type'] == 'system':

@@ -16,10 +16,10 @@
             </v-col>
             <v-col cols="12" md="3" class="graph-container">
                 <v-sheet class="pa-2 bg-transparent" style="height: 45vh;">
-                    <GraphPanel style="height: 100%;" name="原始数据" :columes="['弹幕', '礼物', '入场', '点赞']" :data="rawGraphData" :locked="locked"/>
+                    <GraphPanel style="height: 100%;" name="原始数据" :columes="['弹幕', '礼物', '入场', '其他']" :data="rawGraphData" :locked="locked"/>
                 </v-sheet>
                 <v-sheet class="pa-2 bg-transparent" style="height: 45vh;">
-                    <GraphPanel style="height: 100%;" name="过滤后数据" :columes="['弹幕', '礼物', '入场', '点赞']" :data="filteredGraphData" :locked="locked"/>
+                    <GraphPanel style="height: 100%;" name="过滤后数据" :columes="['弹幕', '礼物', '入场', '其他']" :data="filteredGraphData" :locked="locked"/>
                 </v-sheet>
             </v-col>
             <v-col cols="12" md="2">
@@ -71,12 +71,12 @@ onWSMessages.subscribe((rawData) => {
     rawGraphData.value[0].push(data.stats.rawDanmu);
     rawGraphData.value[1].push(data.stats.rawGift);
     rawGraphData.value[2].push(data.stats.rawWelcome);
-    rawGraphData.value[3].push(data.stats.rawLike);
+    rawGraphData.value[3].push(data.stats.rawLike + data.stats.rawSubscribe);
 
     filteredGraphData.value[0].push(data.stats.rawDanmu - data.stats.filteredDanmu);
     filteredGraphData.value[1].push(data.stats.rawGift - data.stats.filteredGift);
     filteredGraphData.value[2].push(data.stats.rawWelcome - data.stats.filteredWelcome);
-    filteredGraphData.value[3].push(data.stats.rawLike - data.stats.filteredLike);
+    filteredGraphData.value[3].push(data.stats.rawLike + data.stats.rawSubscribe - (data.stats.filteredLike + data.stats.filteredSubscribe));
 
     messagesQueueLegnth.value[0].push(data.stats.messagesQueueLength);
 

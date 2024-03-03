@@ -68,6 +68,9 @@
                 "isFansMedalBelongToLive": false,
                 "fansMedalLevelBigger": 0,
                 "isFansMedalVIP": false
+            },
+            "subscribe": {
+                "enable": true
             }
         }
     }

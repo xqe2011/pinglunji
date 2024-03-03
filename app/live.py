@@ -57,6 +57,15 @@ def onGiftCallback(command: GiftMessage):
     timeLog(f"[Gift] {uname} bought {price:.1f}元的{giftName} x {num}.")
     liveEvent.emit('gift', uid, uname, price, giftName, num)
 
+def onSubscribeCallback(command: SocialMessage):
+    uid = command.user.id
+    uname = command.user.nickname
+    isFansMedalBelongToLive = command.user.fans_club.data.anchor_id == anchorID
+    fansMedalLevel = command.user.fans_club.data.level
+    isFansMedalVIP = command.user.follow_info.follow_status == 2
+    timeLog(f"[Subscribe] {uname} subscribed the stream.")
+    liveEvent.emit('subscribe', uid, uname, isFansMedalBelongToLive, fansMedalLevel, isFansMedalVIP)
+
 async def callback(type, data, callbackFn):
     try:
         callbackFn(type().FromString(data))
@@ -85,8 +94,10 @@ async def onMessage(method, data):
         await callback(MemberMessage, data, onWelcomeCallback)
     elif method == 'WebcastGiftMessage':
         await callback(GiftMessage, data, onGiftCallback)
-    if method == 'WebcastChatMessage':
+    elif method == 'WebcastChatMessage':
         await callback(ChatMessage, data, onDanmuCallback)
+    elif method == 'WebcastSocialMessage':
+        await callback(SocialMessage, data, onSubscribeCallback)
 
 async def keepHeartbeatTask():
     global client

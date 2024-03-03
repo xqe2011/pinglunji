@@ -1,6 +1,6 @@
 from .live import liveEvent
-from .filter import filterDanmu, filterGift, filterLike, filterWelcome
-from .stats import setOutputMessagesLength, appendDanmuFilteredStats, appendGiftFilteredStats, appendWelcomeFilteredStats, appendLikeFilteredStats
+from .filter import filterDanmu, filterGift, filterLike, filterSubscribe, filterWelcome
+from .stats import setOutputMessagesLength, appendDanmuFilteredStats, appendGiftFilteredStats, appendWelcomeFilteredStats, appendLikeFilteredStats, appendSubscribeFilteredStats
 import time
 
 messagesQueue = []
@@ -81,6 +81,19 @@ async def onLike(uid, uname):
         })
     else:
         appendLikeFilteredStats(uid=uid, uname=uname, filterd=True)
+
+@liveEvent.on('subscribe')
+async def onSubscribe(uid, uname, isFansMedalBelongToLive, fansMedalLevel, fansMedalGuardLevel):
+    if filterSubscribe(uid, uname, isFansMedalBelongToLive, fansMedalLevel, fansMedalGuardLevel):
+        appendSubscribeFilteredStats(uid=uid, uname=uname, filterd=False)
+        messagesQueueAppend({
+            'type': 'subscribe',
+            'time': time.time(),
+            'uid': uid,
+            'uname': uname
+        })
+    else:
+        appendSubscribeFilteredStats(uid=uid, uname=uname, filterd=True)
 
 @liveEvent.on('welcome')
 async def onWelcome(uid, uname, isFansMedalBelongToLive, fansMedalLevel, isFansMedalVIP):

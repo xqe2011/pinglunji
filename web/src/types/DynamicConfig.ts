@@ -48,5 +48,8 @@ export type DynamicConfig = {
             "enable": boolean,
             "deduplicate": boolean,
         },
+        "subscribe": {
+            "enable": boolean
+        },
     }
 };

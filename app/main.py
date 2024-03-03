@@ -1,4 +1,4 @@
-import asyncio, os, time
+import asyncio, os, time, random, string
 from .live import initalizeLive, liveEvent
 from .logger import timeLog
 from .messages_handler import *
@@ -6,7 +6,7 @@ from .http import startHttpServer, broadcastWSMessage
 from .stats import statsTask, statsEvent, getDelay, getMessagesLength
 from .remote import initRemote, remoteWSBroadcast
 from .keyboard import initalizeKeyboard
-from .config import configEvent, getJsonConfig
+from .config import configEvent, getJsonConfig, updateJsonConfig
 # only load tts in windows
 if os.name == 'nt':
     from .tts import ttsTask, ttsSystem
@@ -39,6 +39,13 @@ async def liveConnectedHandler():
 
 def main():
     timeLog('[Main] Started')
+    # 生成随机密钥
+    config = getJsonConfig()
+    if config["engine"]["http"]["token"] == "":
+        token = ''.join(random.choice(string.ascii_lowercase + string.digits) for i in range(32))
+        timeLog(f'[Main] Token is empty, generated a new random token: {token}')
+        config["engine"]["http"]["token"] = token
+        asyncio.run(updateJsonConfig(config))
     try:
         tasks = [statsTask, initRemote, initalizeKeyboard, initalizeLive]
         if os.name == 'nt':

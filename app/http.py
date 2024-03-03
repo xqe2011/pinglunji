@@ -12,7 +12,7 @@ app = Quart(__name__, static_folder=staticFilesPath, static_url_path='/')
 app = cors(app, allow_origin='*')
 tasks = []
 allWSClients = []
-token = getJsonConfig()['engine']['http']['token']
+token = None
 
 async def fakeRequest(url, query, method, data):
     return await (await app.test_client().open(path=url, query_string=query, method=method, json=data)).json
@@ -20,7 +20,7 @@ async def fakeRequest(url, query, method, data):
 def checkToken(func):
     async def wrappedFunc(*args, **kwargs):
         global token
-        if request.args.get('token') != token:
+        if token == None or request.args.get('token') != token:
             return { 'status': -1, 'msg': 'token error' }, 401
         return await func(*args, **kwargs)
     wrappedFunc.__name__ = func.__name__
@@ -144,5 +144,6 @@ async def broadcastWSMessage(message):
 def startHttpServer(backgroundTasks):
     global tasks, token
     tasks = backgroundTasks
+    token = getJsonConfig()['engine']['http']['token']
     timeLog('[HTTP] Started, url: http://127.0.0.1:7070/?token=' + token)
     app.run(host='0.0.0.0', port=7070)

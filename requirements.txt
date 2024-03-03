@@ -14,3 +14,4 @@ appdirs==1.4.4
 betterproto[compiler]==1.2.5
 regex==2023.8.8
 aiohttp==3.9.3
+requests=2.31.0

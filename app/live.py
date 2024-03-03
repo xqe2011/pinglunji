@@ -10,9 +10,15 @@ session = None
 client = None
 anchorID = 0
 liveEvent = AsyncIOEventEmitter()
+firstConnect = True
+heartbeatTask = None
+systemExitedFlag = False
 
-def onConnected(command):
-    liveEvent.emit('connected', True)
+def onConnected():
+    global firstConnect
+    if firstConnect:
+        firstConnect = False
+        liveEvent.emit('connected')
 
 def onDanmuCallback(command: ChatMessage):
     global anchorID
@@ -58,6 +64,19 @@ async def callback(type, data, callbackFn):
         timeLog(f'[Live] Exception happened when calling callback')
         traceback.print_exc()
 
+async def send(data):
+    global client
+    try:
+        await client.send_bytes(data.SerializeToString())
+        return True
+    except:
+        timeLog(f'[Live] Failed to send websocket messages, closing connection')
+        try:
+            await client.close()
+        except:
+            pass
+        return False
+
 async def onMessage(method, data):
     timeLog(f'[Live] Received Server method: {method}')
     if method == 'WebcastLikeMessage':
@@ -72,16 +91,12 @@ async def onMessage(method, data):
 async def keepHeartbeatTask():
     global client
     while True:
-        if client.closed or client._closing:
-            timeLog(f'[Live] Gave up sending Heartbeat, because connection closed')
-            return
-        obj = WssResponse(payload_type='hb')
-        await client.send_bytes(obj.SerializeToString())
-        timeLog(f'[Live] Sent heartbeat')
+        if await send(WssResponse(payload_type='hb')):
+            timeLog(f'[Live] Sent heartbeat')
         await asyncio.sleep(10)
 
 async def receiveMessagesTask():
-    global client
+    global client, systemExitedFlag
     async for msg in client:
         if msg.type == aiohttp.WSMsgType.BINARY:
             # 解析指令
@@ -90,19 +105,28 @@ async def receiveMessagesTask():
             # 自动回复ACK
             if payloadPackage.need_ack:
                 obj = WssResponse(logid=wssPackage.logid, payload_type=payloadPackage.internal_ext)
-                if not client.closed and not client._closing:
-                    await client.send_bytes(obj.SerializeToString())
+                if await send(obj):
                     timeLog('[Live] Sent ACK')
             # 消息处理器
             for msgPayload in payloadPackage.messages:
                 await onMessage(msgPayload.method, msgPayload.payload)
-        elif msg.type == aiohttp.WSMsgType.CLOSED or msg.type == aiohttp.WSMsgType.ERROR:
-            timeLog(f'[Live] Connection closed, retrying after 3 seconds...')
-            return
+    if systemExitedFlag:
+        return
+    timeLog(f'[Live] Connection closed, retrying after 3 seconds...')
+    await asyncio.sleep(3)
+    asyncio.create_task(connectLive())
 
-async def connectLive(liveID):
-    global session, client
-    roomInfoURL = f"https://live.douyin.com/{liveID}"
+async def connectLive():
+    global session, client, anchorID, heartbeatTask
+    # 释放资源
+    if client != None and not client.closed:
+        await client.close()
+    if session != None and not session.closed:
+        await session.close()
+    if heartbeatTask != None and not heartbeatTask.done():
+        heartbeatTask.cancel()
+    config = getJsonConfig()
+    roomInfoURL = f'https://live.douyin.com/{config["engine"]["douyin"]["liveID"]}'
     headers = {
         'authority': 'live.douyin.com',
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -117,8 +141,8 @@ async def connectLive(liveID):
     roomInfo = re.search(r'room\\":{.*\\"id_str\\":\\"(\d+)\\".*,\\"status\\":(\d+).*"title\\":\\"([^"]*)\\"', response.text)
     ttwID = response.cookies.get("ttwid")
     isLiveStarted = roomInfo.group(2) != '4'
-    livePushID = re.search(r'roomId\\":\\"(\d+)\\"', response.text).group(1)
-    anchorID = re.search(r'anchor\\":{\\"id_str\\":\\"(\d+)\\"', response.text).group(1)
+    livePushID = int(re.search(r'roomId\\":\\"(\d+)\\"', response.text).group(1))
+    anchorID = int(re.search(r'anchor\\":{\\"id_str\\":\\"(\d+)\\"', response.text).group(1))
     timeLog(f'[Live] Got live room info, livePushID: {livePushID}, anchorID: {anchorID}, ttwID: {ttwID}, isLiveStarted: {isLiveStarted}')
 
     websocketURL = f'wss://webcast3-ws-web-lq.douyin.com/webcast/im/push/v2/?app_name=douyin_web&version_code=180800&webcast_sdk_version=1.3.0&update_version_code=1.3.0&compress=gzip&internal_ext=internal_src:dim|wss_push_room_id:{livePushID}|wss_push_did:7188358506633528844|dim_log_id:20230521093022204E5B327EF20D5CDFC6|fetch_time:1684632622323|seq:1|wss_info:0-1684632622323-0-0|wrds_kvs:WebcastRoomRankMessage-1684632106402346965_WebcastRoomStatsMessage-1684632616357153318&cursor=t-1684632622323_r-1_d-1_u-1_h-1&host=https://live.douyin.com&aid=6383&live_id=1&did_rule=3&debug=false&maxCacheMessageNumber=20&endpoint=live_pc&support_wrds=1&im_path=/webcast/im/fetch/&user_unique_id=7188358506633528844&device_platform=web&cookie_enabled=true&screen_width=1440&screen_height=900&browser_language=zh&browser_platform=MacIntel&browser_name=Mozilla&browser_version=5.0%20(Macintosh;%20Intel%20Mac%20OS%20X%2010_15_7)%20AppleWebKit/537.36%20(KHTML,%20like%20Gecko)%20Chrome/113.0.0.0%20Safari/537.36&browser_online=true&tz_name=Asia/Shanghai&identity=audience&room_id={livePushID}&heartbeatDuration=0&signature=00000000'
@@ -129,17 +153,19 @@ async def connectLive(liveID):
     session = aiohttp.ClientSession()
     client = await session.ws_connect(websocketURL, headers=headers)
     # 创建任务
-    asyncio.create_task(keepHeartbeatTask())
+    onConnected()
+    heartbeatTask = asyncio.create_task(keepHeartbeatTask())
     asyncio.create_task(receiveMessagesTask())
+
+async def initalizeLive():
+    global systemExitedFlag
+    await connectLive()
     while True:
         try:
             await asyncio.sleep(100)
         except asyncio.CancelledError:
             timeLog(f'[Live] System exiting, closing websocket connection')
+            systemExitedFlag = True
             await client.close()
             await session.close()
             return
-
-async def initalizeLive():
-    config = getJsonConfig()
-    await connectLive(config["engine"]["douyin"]["liveID"])

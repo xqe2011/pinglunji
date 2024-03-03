@@ -144,5 +144,5 @@ async def broadcastWSMessage(message):
 def startHttpServer(backgroundTasks):
     global tasks, token
     tasks = backgroundTasks
-    timeLog('[HTTP] Started, url: http://127.0.0.1:8080/?token=' + token)
-    app.run(host='0.0.0.0', port=8080)
+    timeLog('[HTTP] Started, url: http://127.0.0.1:7070/?token=' + token)
+    app.run(host='0.0.0.0', port=7070)

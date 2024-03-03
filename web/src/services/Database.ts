@@ -5,7 +5,7 @@ import { Subscriber } from '@/services/Subscriber';
 import { EngineConfig } from '@/types/EngineConfig';
 
 let token = '';
-const functionURL = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host;
+const functionURL = window.location.hostname === 'localhost' ? 'localhost:7070' : window.location.host;
 let websocketClient = undefined;
 export const onWSMessages = new Subscriber<(data: WebsocketBroadcastMessage) => void>();
 export const onWSState = new Subscriber<(state: 'connecting' | 'connected') => void>(true);

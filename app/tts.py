@@ -110,9 +110,6 @@ async def tts(text, channel=0, config=None):
         text = "".join([symbolToText[char] if char in symbolToText else char for char in text])
     text = xmlEscape(text)
 
-    # 支持日语
-    if ttsConfig['japanese']['enable']:
-        text = re.sub(r'[\u3040-\u309F\u30A0-\u30FF]+', calculateTags("ja-JP", ttsConfig['japanese'], '\g<0>'), text)
     ssml = f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="zh-CN"><voice xml:lang="zh-CN">{text}</voice></speak>'
     # Synthesize text to a stream
     stream = await channels[channel]['synthesizer'].synthesize_ssml_to_stream_async(ssml)

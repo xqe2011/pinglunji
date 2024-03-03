@@ -4,6 +4,7 @@ from pyee import AsyncIOEventEmitter
 from .live_proto import *
 from .logger import timeLog
 from .tool import isAllCharactersEmoji
+from .config import getJsonConfig
 
 session = None
 client = None
@@ -139,4 +140,6 @@ async def connectLive(liveID):
             await session.close()
             return
 
-asyncio.run(connectLive(757069520376))
+async def initalizeLive():
+    config = getJsonConfig()
+    await connectLive(config["engine"]["douyin"]["liveID"])

@@ -1,0 +1,84 @@
+name: "release"
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    name: "Release"
+    permissions: write-all
+    runs-on: "windows-latest"
+    
+    steps:
+      - uses: "actions/checkout@v2"
+        with:
+          submodules: 'recursive'
+
+      - name: "Set up Python"
+        uses: "actions/setup-python@v2"
+        with:
+          python-version: "3.11"
+      
+      - name: "Set up node"
+        uses: "actions/setup-node@v2"
+        with:
+          node-version: "20.3.1"
+      
+      - name: "Set up Go"
+        uses: "actions/setup-go@v2"
+        with:
+          go-version: "1.19.4"
+      
+      - name: Install NSIS
+        run: |
+          Invoke-WebRequest https://netactuate.dl.sourceforge.net/project/nsis/NSIS%203/3.09/nsis-3.09-setup.exe -OutFile C:\WINDOWS\Temp\nsis-setup.exe
+          Invoke-Expression "& C:\WINDOWS\Temp\nsis-setup.exe \S"
+        shell: pwsh
+        
+      - name: "Install Python dependencies"
+        run: |
+          pip install -r requirements.txt
+      
+      - name: "Install Node dependencies"
+        run: |
+          cd web
+          npm install
+      
+      - name: "Install Go dependencies"
+        run: |
+          set GO111MODULE=on
+          go install github.com/zeromicro/go-zero/tools/goctl@latest
+          goctl env check --install --verbose --force
+      
+      - name: "Build Web Static"
+        run: |
+          cd web
+          npm run build
+          cp -r dist ../static
+      
+      - name: "Build Proto"
+        run: |
+          python -m tools.generate_proto
+      
+      - name: "Build executable"
+        run: |
+          pyinstaller launcher.spec
+      
+      - name: "Create release"
+        run: |
+          $VERSION = "${{  github.ref_name }}"
+          $VERSION = $VERSION.Substring(1)
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /DVERSION=$VERSION installer.nsi
+        shell: pwsh
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: false
+          title: ${{  github.ref_name }}
+          files: |
+            LICENSE.txt
+            README.md
+            installer.exe

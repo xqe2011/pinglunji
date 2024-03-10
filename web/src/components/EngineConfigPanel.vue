@@ -5,13 +5,15 @@
         </v-card-title>
 
         <v-form class="overflow-auto">
+            <v-btn v-if="config.remote.enable" class="copy-button" block :loading="copying" color="yellow" @click="onCopyRemoteURL">复制远程连接链接</v-btn>
+            <v-btn v-if="config.remote.enable" class="flush-button" block :loading="flushing" color="red" @click="onFlushRemoteURL">刷新远程连接密钥</v-btn>
+            <v-divider v-if="config.remote.enable"></v-divider>
+
             <v-text-field v-model="config.douyin.liveID" label="直播间号" aria-label="直播间号"></v-text-field>
-            <v-text-field v-model="config.http.token" label="HTTP令牌" aria-label="HTTP令牌"></v-text-field>
             <v-divider></v-divider>
 
             <v-switch v-model="config.remote.enable" inset color="blue" label="启用远程控制" aria-label="启用远程控制"></v-switch>
             <v-text-field v-model="config.remote.server" label="服务器地址" aria-label="远程控制的服务器地址"></v-text-field>
-            <v-text-field v-model="config.remote.password" label="服务器密码" aria-label="远程控制的服务器密码"></v-text-field>
             
             <v-divider></v-divider>
             <v-btn class="save-button" :loading="saving" color="blue" @click="onSave" aria-label="引擎配置保存(可以使用键盘Ctrl+S保存)" block>保存</v-btn>
@@ -41,6 +43,9 @@
 .save-button {
     margin-top: 16px;
 }
+.copy-button, .flush-button {
+    margin-bottom: 16px;
+}
 .block-divider {
     margin-bottom: 22px;
 }
@@ -49,37 +54,22 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { EngineConfig } from "../types/EngineConfig";
-import { getEngineConfig, updateEngineConfig, onWSState } from '@/services/Database';
+import { getEngineConfig, updateEngineConfig, onWSState, getRemoteURL, flushRemoteURL } from '@/services/Database';
+import copy from 'clipboard-copy';
 
 const config = ref(undefined as unknown as EngineConfig);
 config.value = {
     douyin: {
         liveID: 0,
     },
-    http: {
-        token: ""
-    },
     remote: {
         enable: false,
-        server: "",
-        password: ""
+        server: ""
     },
 };
-const reading = ref(true);
 const saving = ref(false);
-const logouting = ref(false);
-
-function onRead() {
-    reading.value = true;
-    getEngineConfig().then(msg => {
-        config.value = msg;
-        reading.value = false;
-    }).catch(err => {
-        console.error(err);
-        reading.value = false;
-        alert('读取失败');
-    })
-}
+const copying = ref(false);
+const flushing = ref(false);
 
 function onSave() {
     saving.value = true;
@@ -98,7 +88,9 @@ function onSave() {
 
 onWSState.subscribe(data => {
     if (data == 'connected') {
-        onRead();
+        getEngineConfig().then(msg => {
+            config.value = msg;
+        });
     }
 });
 
@@ -107,5 +99,29 @@ function onKeydown(event: KeyboardEvent) {
         event.preventDefault();
         onSave();
     }
+}
+
+function onCopyRemoteURL() {
+    getRemoteURL().then(url => {
+        copying.value = false;
+        copy(url).then(() => {
+            alert('已复制到剪切板');
+        });
+    }).catch(err => {
+        console.error(err);
+        copying.value = false;
+        alert('获取失败');
+    });
+}
+
+function onFlushRemoteURL() {
+    flushRemoteURL().then(url => {
+        flushing.value = false;
+        alert('刷新成功，重启生效');
+    }).catch(err => {
+        console.error(err);
+        flushing.value = false;
+        alert('刷新失败');
+    });
 }
 </script>

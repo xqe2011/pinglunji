@@ -84,6 +84,14 @@ export async function flushQueue() {
     await wsRequest('flush');
 }
 
+export async function getRemoteURL() {
+    return (await wsRequest('getRemoteURL')) as string;
+}
+
+export async function flushRemoteURL() {
+    await wsRequest('flushRemoteURL');
+}
+
 export async function getRunningMode() {
     return { 'remote': connectMode === "remote" } as { 'remote': boolean };
 }

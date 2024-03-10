@@ -1,13 +1,18 @@
 {
-    "kvdb": {},
+    "kvdb": {
+        "remote": {
+            "server": "",
+            "channel": "",
+            "token": ""
+        }
+    },
     "engine": {
         "douyin": {
             "liveID": 21654925
         },
         "remote": {
             "enable": false,
-            "server": "wss://nuozi.club",
-            "password": "nuozimeow"
+            "server": "wss://nuozi.club"
         }
     },
     "dynamic": {

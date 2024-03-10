@@ -6,10 +6,8 @@ from .http import startHttpServer, broadcastWSMessage
 from .stats import statsTask, statsEvent, getDelay, getMessagesLength
 from .remote import initRemote, remoteWSBroadcast
 from .keyboard import initalizeKeyboard
-from .config import configEvent, getJsonConfig, updateJsonConfig
-# only load tts in windows
-if os.name == 'nt':
-    from .tts import ttsTask, ttsSystem
+from .config import configEvent, getJsonConfig
+from .tts import ttsTask, ttsSystem
 
 lastAlertTime = 0
 @statsEvent.on('stats')
@@ -40,9 +38,7 @@ async def liveConnectedHandler():
 def main():
     timeLog('[Main] Started')
     try:
-        tasks = [statsTask, initRemote, initalizeKeyboard, initalizeLive]
-        if os.name == 'nt':
-            tasks.append(ttsTask)
+        tasks = [statsTask, initRemote, initalizeKeyboard, initalizeLive, ttsTask]
         startHttpServer(tasks)
     except KeyboardInterrupt:
         pass

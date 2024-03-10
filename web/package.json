@@ -12,6 +12,7 @@
     "@fortawesome/fontawesome-free": "^6.4.0",
     "@mdi/font": "7.0.96",
     "axios": "^1.4.0",
+    "clipboard-copy": "^4.0.1",
     "core-js": "^3.29.0",
     "echarts": "^5.4.3",
     "pusher-js": "^8.4.0-rc2",

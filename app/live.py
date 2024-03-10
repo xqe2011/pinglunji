@@ -157,6 +157,7 @@ async def connectLive():
         anchorID = int(re.search(r'anchor\\":{\\"id_str\\":\\"(\d+)\\"', response.text).group(1))
     except:
         timeLog(f'[Live] Failed to get room info, retrying after 3 seconds...')
+        return
         await asyncio.sleep(3)
         asyncio.create_task(connectLive())
         return

@@ -1,10 +1,27 @@
 import pysher, requests, json, asyncio
 from .logger import timeLog
-from .http import call
+from .config import getJsonConfig, updateJsonConfig
 
 client = None
 channel = None
 asyncLoop = None
+dashboardURL = None
+httpCallFunction = None
+
+def setHttpCallFunction(func):
+    global httpCallFunction
+    httpCallFunction = func
+
+async def getDashboardURL():
+    return dashboardURL
+
+async def clearRemoteCredential():
+    config = getJsonConfig()
+    config['kvdb']['remote']["server"] = ""
+    config['kvdb']['remote']["channel"] = ""
+    config['kvdb']['remote']["token"] = ""
+    await updateJsonConfig(config)
+    timeLog(f'[Remote] Cleared credential')
 
 async def remoteWSBroadcast(data):
     global channel
@@ -13,7 +30,7 @@ async def remoteWSBroadcast(data):
 
 async def callAsync(method, id, args):
     timeLog(f'[Remote] Handling remote RPC call, method: {method}')
-    status, msg = await call(method, args, False)
+    status, msg = await httpCallFunction(method, args, False)
     data = {
         "id": id,
         "status": status,
@@ -30,11 +47,33 @@ def onSubscriptionSucceeded(inputChannel):
     channel = inputChannel
     timeLog(f"[Remote] Channel subscribed")
 
-def subscribe(channelName, token):
-    response = requests.get(f"https://fuwuji.nuozi.club/authorizeChannel?dashboard=danmuji&version=v1.4.0&socket_id={client.connection.socket_id}&channel={channelName}&token={token}")
-    response.raise_for_status()
-    data = response.json()
+def subscribe(server, channelName, token):
+    global dashboardURL
+    config = getJsonConfig()
+    # 首先尝试存储的token是否可以使用
+    useNew = True
+    if server == config['kvdb']['remote']['server']:
+        try:
+            response = requests.get(f"{config['kvdb']['remote']['server']}/authorizeChannel?dashboard=danmuji&version=v1.4.0&socket_id={client.connection.socket_id}&channel={config['kvdb']['remote']['channel']}&token={config['kvdb']['remote']['token']}")
+            response.raise_for_status()
+            data = response.json()
+            channelName = config['kvdb']['remote']['channel']
+            token = config['kvdb']['remote']['token']
+            useNew = False
+            timeLog(f'[Remote] Old credential valid, using the old one')
+        except:
+            timeLog(f'[Remote] Old credential invalid, using the new one')
+    if useNew:
+        response = requests.get(f"{server}/authorizeChannel?dashboard=danmuji&version=v1.4.0&socket_id={client.connection.socket_id}&channel={channelName}&token={token}")
+        response.raise_for_status()
+        data = response.json()
+        # 保存登录信息，供下次使用
+        config['kvdb']['remote']["server"] = server
+        config['kvdb']['remote']["channel"] = channelName
+        config['kvdb']['remote']["token"] = token
+        asyncio.run_coroutine_threadsafe(updateJsonConfig(config), asyncLoop)
     timeLog(f'[Remote] Got credential and dashboard url from server, auth: {data["auth"]}, url: {data["url"]}')
+    dashboardURL = data["url"]
     inputChannel = client.subscribe(channelName, data["auth"])
     # 只有订阅成功才算是完全建立频道连接，保存频道信息
     inputChannel.bind("pusher_internal:subscription_succeeded", lambda *_, **__: onSubscriptionSucceeded(inputChannel))
@@ -43,14 +82,15 @@ def subscribe(channelName, token):
 def onClientError(data):
     timeLog(f'[Remote] Error occurred: {json.dumps(data, ensure_ascii=False)}')
 
-def onClientClosed(data):
-    timeLog(f'[Remote] Error occurred: {json.dumps(data, ensure_ascii=False)}')
-
 async def initRemote():
     global client, asyncLoop
     asyncLoop = asyncio.get_running_loop()
+    config = getJsonConfig()
+    if not config['engine']['remote']['enable']:
+        timeLog(f'[Remote] Remote Disabled')
+        return
     try:
-        response = requests.get("https://fuwuji.nuozi.club/config")
+        response = requests.get(f"{config['engine']['remote']['server']}/config")
         response.raise_for_status()
     except:
         timeLog(f'[Remote] Cannot fetch pusher config, retrying after 3 seconds...')
@@ -62,6 +102,6 @@ async def initRemote():
     channel = data["channel"]
     hostInfo = { "custom_host": data['host'], "port": data['port'], "secure": data['secure'] } if 'host' in data else { "cluster": data['cluster'] }
     client = pysher.Pusher(data["key"], **hostInfo)
-    client.connection.bind('pusher:connection_established', lambda _: subscribe(channel, token))
+    client.connection.bind('pusher:connection_established', lambda _: subscribe(config['engine']['remote']['server'], channel, token))
     client.connection.bind("pusher:error", onClientError)
     client.connect()

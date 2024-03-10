@@ -4,8 +4,8 @@ from .config import updateJsonConfig, getJsonConfig
 import asyncio, json, os, webbrowser
 from .logger import timeLog
 from .messages_handler import markAllMessagesInvalid
-if os.name == 'nt':
-    from .tts import getAllVoices, getAllSpeakers
+from .tts import getAllVoices, getAllSpeakers
+from .remote import setHttpCallFunction, clearRemoteCredential, getDashboardURL
 
 staticFilesPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../static')
 events = {}
@@ -71,6 +71,15 @@ async def updateEngineConfig(config):
     await updateJsonConfig(nowJsonConfig)
     return 0, 'ok'
 
+@registerEvent(True)
+async def getRemoteURL():
+    return 0, await getDashboardURL()
+
+@registerEvent(True)
+async def flushRemoteURL():
+    await clearRemoteCredential()
+    return 0, 'ok'
+
 async def call(method, args, local):
     if method in events:
         return await events[method](local, **args)
@@ -106,8 +115,7 @@ async def ws():
 
 @app.before_serving
 async def startup():
-    if os.name == "nt":
-        webbrowser.register('edge', None, webbrowser.GenericBrowser(os.environ['ProgramFiles(x86)'] + r'\Microsoft\Edge\Application\msedge_proxy.exe'), preferred=True)
+    webbrowser.register('edge', None, webbrowser.GenericBrowser(os.environ['ProgramFiles(x86)'] + r'\Microsoft\Edge\Application\msedge_proxy.exe'), preferred=True)
     webbrowser.open('http://127.0.0.1:7070', new=1, autoraise=True)
     for task in tasks:
         app.add_background_task(task)
@@ -124,5 +132,6 @@ async def broadcastWSMessage(message):
 def startHttpServer(backgroundTasks):
     global tasks
     tasks = backgroundTasks
+    setHttpCallFunction(call)
     timeLog('[HTTP] Started, url: http://127.0.0.1:7070')
     app.run(host='0.0.0.0', port=7070)

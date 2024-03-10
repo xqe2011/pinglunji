@@ -65,4 +65,11 @@ export type WebsocketBroadcastMessage = {
 } | {
     "type": "config",
     "data": ConfigEvent
+} | {
+    "type": "response",
+    "data": {
+        "id": number,
+        "status": number,
+        "msg": any
+    }
 };

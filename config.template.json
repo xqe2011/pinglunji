@@ -4,9 +4,6 @@
         "douyin": {
             "liveID": 21654925
         },
-        "http": {
-            "token": ""
-        },
         "remote": {
             "enable": false,
             "server": "wss://nuozi.club",

@@ -1,4 +1,4 @@
-from quart import Quart, request, websocket, send_from_directory
+from quart import Quart, websocket, send_from_directory
 from quart_cors import cors
 from .config import updateJsonConfig, getJsonConfig
 import asyncio, json, os, webbrowser
@@ -8,31 +8,22 @@ if os.name == 'nt':
     from .tts import getAllVoices, getAllSpeakers
 
 staticFilesPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../static')
+events = {}
 app = Quart(__name__, static_folder=staticFilesPath, static_url_path='/')
 app = cors(app, allow_origin='*')
 tasks = []
 allWSClients = []
-token = None
 
-async def fakeRequest(url, query, method, data):
-    return await (await app.test_client().open(path=url, query_string=query, method=method, json=data)).json
-
-def checkToken(func):
-    async def wrappedFunc(*args, **kwargs):
-        global token
-        if token == None or request.args.get('token') != token:
-            return { 'status': -1, 'msg': 'token error' }, 401
-        return await func(*args, **kwargs)
-    wrappedFunc.__name__ = func.__name__
-    return wrappedFunc
-
-def onlyLocal(func):
-    async def wrappedFunc(*args, **kwargs):
-        if request.args.get('remote') == '1':
-            return { 'status': -1, 'msg': 'not support this method in remote mode' }, 403
-        return await func(*args, **kwargs)
-    wrappedFunc.__name__ = func.__name__
-    return wrappedFunc
+def registerEvent(localOnly):
+    def decorator(func):
+        async def wrappedFunc(local, *args, **kwargs):
+            if localOnly and not local:
+                return -1, 'not support this method in remote mode'
+            return await func(*args, **kwargs)
+        wrappedFunc.__name__ = func.__name__
+        events[func.__name__] = wrappedFunc
+        return wrappedFunc
+    return decorator
 
 @app.route('/', methods=['GET'])
 async def index():
@@ -44,91 +35,80 @@ def addHeader(response):
     response.cache_control.no_cache = True
     return response
 
-@app.route('/api/running_mode', methods=['GET'])
-async def getRunningMode():
-    return { 'status': 0, 'msg': { 'remote': False } }
-
-@app.route('/api/logout', methods=['POST'])
-@checkToken
-@onlyLocal
-async def logout():
-    nowJsonConfig = getJsonConfig()
-    nowJsonConfig['kvdb']['bili']['uid'] = ""
-    nowJsonConfig['kvdb']['bili']['buvid3'] = ""
-    nowJsonConfig['kvdb']['bili']['sessdata'] = ""
-    nowJsonConfig['kvdb']['bili']['jct'] = ""
-    await updateJsonConfig(nowJsonConfig)
-    return { 'status': 0, 'msg': 'ok' }
-
-@app.route('/api/tts/speakers', methods=['GET'])
-@checkToken
+@registerEvent(False)
 async def getSpeakers():
-    if os.name != 'nt':
-        return { 'status': -1, 'msg': 'not support' }, 400
-    return { 'status': 0, 'msg': getAllSpeakers() }
+    return 0, getAllSpeakers()
 
-@app.route('/api/tts/voices', methods=['GET'])
-@checkToken
+@registerEvent(False)
 async def getVoices():
-    if os.name != 'nt':
-        return { 'status': -1, 'msg': 'not support' }, 400
-    return { 'status': 0, 'msg': getAllVoices() }
+    return 0, getAllVoices()
 
-@app.route('/api/flush', methods=['POST'])
-@checkToken
+@registerEvent(False)
 async def flush():
     await markAllMessagesInvalid()
-    return { 'status': 0, 'msg': 'ok' }
+    return 0, 'ok'
 
-@app.route('/api/config/dynamic', methods=['GET'])
-@checkToken
-async def getConfig():
-    return { 'status': 0, 'msg': getJsonConfig()['dynamic'] }
+@registerEvent(False)
+async def getDynamicConfig():
+    return 0, getJsonConfig()['dynamic']
 
-@app.route('/api/config/dynamic', methods=['POST'])
-@checkToken
-async def updateConfig():
+@registerEvent(False)
+async def updateDynamicConfig(config):
     nowJsonConfig = getJsonConfig()
-    nowJsonConfig['dynamic'] = await request.json
+    nowJsonConfig['dynamic'] = config
     await updateJsonConfig(nowJsonConfig)
-    return { 'status': 0, 'msg': 'ok' }
+    return 0, 'ok'
 
-@app.route('/api/config/engine', methods=['GET'])
-@checkToken
-@onlyLocal
+@registerEvent(True)
 async def getEngineConfig():
     data = getJsonConfig()['engine']
-    return { 'status': 0, 'msg': data }
+    return 0, data
 
-@app.route('/api/config/engine', methods=['POST'])
-@checkToken
-@onlyLocal
-async def updateEngineConfig():
+@registerEvent(True)
+async def updateEngineConfig(config):
     nowJsonConfig = getJsonConfig()
-    nowJsonConfig['engine'] = await request.json
+    nowJsonConfig['engine'] = config
     await updateJsonConfig(nowJsonConfig)
-    return { 'status': 0, 'msg': 'ok' }
+    return 0, 'ok'
 
-@app.websocket('/ws/client')
+async def call(method, args, local):
+    if method in events:
+        return await events[method](local, **args)
+    else:
+        return -1, 'not support'
+
+@app.websocket('/client')
 async def ws():
-    global token
-    if 'token' not in websocket.args or websocket.args['token'] != token:
-        await websocket.close(code=-1, reason='token error')
-        return
     try:
         allWSClients.append(websocket._get_current_object())
         while True:
-            await websocket.receive()
+            # 检查输入
+            try:
+                data = json.loads(await websocket.receive())
+            except json.JSONDecodeError:
+                continue
+            # 处理RPC调用
+            if 'type' in data and data['type'] == "request" and 'method' in data["data"] and 'args' in data["data"] and 'id' in data["data"]:
+                timeLog(f'[Websocket] Handling local RPC call, method: {data["data"]["method"]}')
+                status, msg = await call(data['data']["method"], data['data']["args"], True)
+                response = {
+                    "type": "response",
+                    "data": {
+                        "id": data["data"]["id"],
+                        "status": status,
+                        "msg": msg
+                    }
+                }
+                await websocket.send(json.dumps(response))
     except asyncio.CancelledError:
         allWSClients.remove(websocket)
         raise
 
 @app.before_serving
 async def startup():
-    global token
     if os.name == "nt":
         webbrowser.register('edge', None, webbrowser.GenericBrowser(os.environ['ProgramFiles(x86)'] + r'\Microsoft\Edge\Application\msedge_proxy.exe'), preferred=True)
-    webbrowser.open('http://127.0.0.1:7070/?token=' + token, new=1, autoraise=True)
+    webbrowser.open('http://127.0.0.1:7070', new=1, autoraise=True)
     for task in tasks:
         app.add_background_task(task)
 
@@ -142,8 +122,7 @@ async def broadcastWSMessage(message):
         await ws.send(json.dumps(message, ensure_ascii=False))
 
 def startHttpServer(backgroundTasks):
-    global tasks, token
+    global tasks
     tasks = backgroundTasks
-    token = getJsonConfig()['engine']['http']['token']
-    timeLog('[HTTP] Started, url: http://127.0.0.1:7070/?token=' + token)
+    timeLog('[HTTP] Started, url: http://127.0.0.1:7070')
     app.run(host='0.0.0.0', port=7070)

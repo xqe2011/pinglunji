@@ -39,13 +39,6 @@ async def liveConnectedHandler():
 
 def main():
     timeLog('[Main] Started')
-    # 生成随机密钥
-    config = getJsonConfig()
-    if config["engine"]["http"]["token"] == "":
-        token = ''.join(random.choice(string.ascii_lowercase + string.digits) for i in range(32))
-        timeLog(f'[Main] Token is empty, generated a new random token: {token}')
-        config["engine"]["http"]["token"] = token
-        asyncio.run(updateJsonConfig(config))
     try:
         tasks = [statsTask, initRemote, initalizeKeyboard, initalizeLive]
         if os.name == 'nt':

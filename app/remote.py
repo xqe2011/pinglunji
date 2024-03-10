@@ -1,49 +1,67 @@
-import websockets, json, asyncio, traceback
-from .config import getJsonConfig
-from .http import fakeRequest
+import pysher, requests, json, asyncio
 from .logger import timeLog
+from .http import call
 
-websocketClient = None
+client = None
+channel = None
+asyncLoop = None
 
-async def remoteWSBroadcast(msg):
-    if websocketClient != None:
-        await websocketClient.send(json.dumps({
-            "type": "websocket",
-            "data": msg
-        }, ensure_ascii=False))
+async def remoteWSBroadcast(data):
+    global channel
+    if channel != None:
+        channel.trigger("client-" + data['type'], data['data'])
+
+async def callAsync(method, id, args):
+    timeLog(f'[Remote] Handling remote RPC call, method: {method}')
+    status, msg = await call(method, args, False)
+    data = {
+        "id": id,
+        "status": status,
+        "msg": msg
+    }
+    channel.trigger("client-response", data)
+
+def onRequest(jsonString):
+    data = json.loads(jsonString)
+    asyncio.run_coroutine_threadsafe(callAsync(data['method'], data['id'], data['args']), asyncLoop)
+
+def onSubscriptionSucceeded(inputChannel):
+    global channel
+    channel = inputChannel
+    timeLog(f"[Remote] Channel subscribed")
+
+def subscribe(channelName, token):
+    response = requests.get(f"https://fuwuji.nuozi.club/authorizeChannel?dashboard=danmuji&version=v1.4.0&socket_id={client.connection.socket_id}&channel={channelName}&token={token}")
+    response.raise_for_status()
+    data = response.json()
+    timeLog(f'[Remote] Got credential and dashboard url from server, auth: {data["auth"]}, url: {data["url"]}')
+    inputChannel = client.subscribe(channelName, data["auth"])
+    # 只有订阅成功才算是完全建立频道连接，保存频道信息
+    inputChannel.bind("pusher_internal:subscription_succeeded", lambda *_, **__: onSubscriptionSucceeded(inputChannel))
+    inputChannel.bind("client-request", onRequest)
+
+def onClientError(data):
+    timeLog(f'[Remote] Error occurred: {json.dumps(data, ensure_ascii=False)}')
+
+def onClientClosed(data):
+    timeLog(f'[Remote] Error occurred: {json.dumps(data, ensure_ascii=False)}')
 
 async def initRemote():
-    config = getJsonConfig()['engine']
-    if config['remote']['enable'] != 1:
+    global client, asyncLoop
+    asyncLoop = asyncio.get_running_loop()
+    try:
+        response = requests.get("https://fuwuji.nuozi.club/config")
+        response.raise_for_status()
+    except:
+        timeLog(f'[Remote] Cannot fetch pusher config, retrying after 3 seconds...')
+        await asyncio.sleep(3)
+        asyncio.create_task(initRemote())
         return
-    while True:
-        try:
-            async with websockets.connect(f"{config['remote']['server']}/ws/server?password={config['remote']['password']}&token={config['http']['token']}") as websocket:
-                timeLog('[Remote] Connected')
-                global websocketClient
-                websocketClient = websocket
-                while True:
-                    data = json.loads(await websocket.recv())
-                    if data['type'] == 'request':
-                        data['query']['remote'] = '1'
-                        await websocket.send(json.dumps({
-                            "type": "response",
-                            "id": data['id'],
-                            "data": await fakeRequest(data['url'], data['query'], data['method'], data['data'])
-                        }, ensure_ascii=False))
-        except (websockets.exceptions.ConnectionClosedError, ConnectionRefusedError):
-            websocketClient = None
-            timeLog('[Remote] Error: ConnectionClosedError')
-        except websockets.exceptions.InvalidStatusCode:
-            websocketClient = None
-            timeLog(f'[Remote] Error: Server rejected')
-        except asyncio.CancelledError:
-            websocketClient = None
-            break
-        except:
-            websocketClient = None
-            timeLog(f'[Remote] Error: Unknown')
-            traceback.print_exc()
-        await asyncio.sleep(1)
-    timeLog('[Remote] Disconnected')
-            
+    data = response.json()
+    token = data["token"]
+    channel = data["channel"]
+    hostInfo = { "custom_host": data['host'], "port": data['port'], "secure": data['secure'] } if 'host' in data else { "cluster": data['cluster'] }
+    client = pysher.Pusher(data["key"], **hostInfo)
+    client.connection.bind('pusher:connection_established', lambda _: subscribe(channel, token))
+    client.connection.bind("pusher:error", onClientError)
+    client.connect()

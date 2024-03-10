@@ -49,7 +49,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { EngineConfig } from "../types/EngineConfig";
-import { getEngineConfig, setEngineConfig, onWSState, logout } from '@/services/Database';
+import { getEngineConfig, updateEngineConfig, onWSState } from '@/services/Database';
 
 const config = ref(undefined as unknown as EngineConfig);
 config.value = {
@@ -86,26 +86,13 @@ function onSave() {
     /* 强制转换number类型 */
     config.value.douyin.liveID = Number(config.value.douyin.liveID);
 
-    setEngineConfig(config.value).then(val => {
+    updateEngineConfig(config.value).then(val => {
         saving.value = false;
         alert('保存成功');
     }).catch(err => {
         console.error(err);
         saving.value = false;
         alert('保存失败');
-    });
-}
-
-function onLogout() {
-    logouting.value = true;
-
-    logout().then(() => {
-        logouting.value = false;
-        alert('退出成功');
-    }).catch(err => {
-        console.error(err);
-        logouting.value = false;
-        alert('退出成功');
     });
 }
 

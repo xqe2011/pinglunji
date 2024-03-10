@@ -94,7 +94,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { DynamicConfig } from "../types/DynamicConfig";
-import { getDynamicConfig, setDynamicConfig, onWSState, flushQueue, getAllVoices, getAllSpeakers, onWSMessages } from '@/services/Database';
+import { getDynamicConfig, updateDynamicConfig, onWSState, flushQueue, getVoices, getSpeakers, onWSMessages } from '@/services/Database';
 
 const ttsCNVoices = ref([] as { title: string, value: string }[]);
 const ttsJPVoices = ref([] as { title: string, value: string }[]);
@@ -173,7 +173,7 @@ function parseConfig(data: DynamicConfig) {
         whitelistKeywords.value = config.value.filter.danmu.whitelistKeywords.join('，');
         ttsCNVoices.value = [];
         ttsJPVoices.value = [];
-        (await getAllVoices()).forEach(voice => {
+        (await getVoices()).forEach(voice => {
             if (voice.language === 'zh-CN') {
                 ttsCNVoices.value.push({
                     title: voice.name,
@@ -187,7 +187,7 @@ function parseConfig(data: DynamicConfig) {
             }
         });
         ttsSpeakers.value = [];
-        (await getAllSpeakers()).forEach(speaker => {
+        (await getSpeakers()).forEach(speaker => {
             ttsSpeakers.value.push({
                 title: speaker,
                 value: speaker
@@ -226,7 +226,7 @@ function onSave() {
     config.value.filter.danmu.whitelistUsers = whitelistUsers.value != "" ? whitelistUsers.value.split(/[,，]+/) : [];
     config.value.filter.danmu.whitelistKeywords = whitelistKeywords.value != "" ? whitelistKeywords.value.split(/[,，]+/) : [];
 
-    setDynamicConfig(config.value).then(val => {
+    updateDynamicConfig(config.value).then(val => {
         saving.value = false;
         alert('保存成功');
     }).catch(err => {

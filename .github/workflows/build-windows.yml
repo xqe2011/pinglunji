@@ -9,6 +9,7 @@ jobs:
     name: "Release"
     permissions: write-all
     runs-on: "windows-latest"
+    environment: release
     
     steps:
       - uses: "actions/checkout@v2"

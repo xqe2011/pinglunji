@@ -55,7 +55,7 @@ def subscribe(server, channelName, token):
     useNew = True
     if server == config['kvdb']['remote']['server']:
         try:
-            response = requests.get(f"{config['kvdb']['remote']['server']}/authorizeChannel?dashboard=danmuji&version={version}&socket_id={client.connection.socket_id}&channel={config['kvdb']['remote']['channel']}&token={config['kvdb']['remote']['token']}")
+            response = requests.get(f"{config['kvdb']['remote']['server']}/authorizeChannel?dashboard=pinglunji&version={version}&socket_id={client.connection.socket_id}&channel={config['kvdb']['remote']['channel']}&token={config['kvdb']['remote']['token']}")
             response.raise_for_status()
             data = response.json()
             channelName = config['kvdb']['remote']['channel']

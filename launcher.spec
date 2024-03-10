@@ -6,7 +6,7 @@ a = Analysis(
     ['launcher.py'],
     pathex=[],
     binaries=[],
-    datas=[('./static', './static'), ('./config.template.json', './'), ('./symbol-to-text.json', './')],
+    datas=[('./static', './static'), ('./config.template.json', './'), ('./symbol-to-text.json', './'), ('./version.json', './')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

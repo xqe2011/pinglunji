@@ -61,6 +61,12 @@ jobs:
         run: |
           python -m tools.generate_proto
       
+      - name: "Write version info"
+        run: |
+          $VERSION = "${{  github.ref_name }}"
+          $VERSION = $VERSION.Substring(1)
+          python -m tools.generate_version $VERSION
+      
       - name: "Build executable"
         run: |
           pyinstaller launcher.spec
@@ -82,3 +88,13 @@ jobs:
             LICENSE.txt
             README.md
             installer.exe
+      
+      - uses: shallwefootball/s3-upload-action@master
+        name: Upload S3
+        with:
+          aws_key_id: ${{ secrets.S3_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.S3_SECRET_ACCESS_KEY}}
+          aws_bucket: ${{ secrets.S3_BUCKET }}
+          endpoint: ${{ secrets.S3_ENDPOINT }}
+          destination_dir: ${{  github.ref_name }}
+          source_dir: 'static'

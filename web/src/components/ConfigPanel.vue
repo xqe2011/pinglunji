@@ -94,7 +94,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { DynamicConfig } from "../types/DynamicConfig";
-import { getDynamicConfig, updateDynamicConfig, onWSState, flushQueue, getVoices, getSpeakers, onWSMessages } from '@/services/Database';
+import { getDynamicConfig, updateDynamicConfig, onServerState, flushQueue, getVoices, getSpeakers, onWSMessages } from '@/services/Database';
 
 const ttsCNVoices = ref([] as { title: string, value: string }[]);
 const ttsJPVoices = ref([] as { title: string, value: string }[]);
@@ -248,8 +248,8 @@ function onFlush() {
     });
 }
 
-onWSState.subscribe(data => {
-    if (data == 'connected') {
+onServerState.subscribe(ready => {
+    if (ready) {
         getDynamicConfig().then(msg => {
             parseConfig(msg);
         }).catch(err => {

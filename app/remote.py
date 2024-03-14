@@ -43,10 +43,22 @@ def onRequest(jsonString):
     data = json.loads(jsonString)
     asyncio.run_coroutine_threadsafe(callAsync(data['method'], data['id'], data['args']), asyncLoop)
 
-def onSubscriptionSucceeded(inputChannel):
+def signin():
+    config = getJsonConfig()
+    response = requests.get(f"{config['kvdb']['remote']['server']}/authorizeUser?role=server&socket_id={client.connection.socket_id}&channel={config['kvdb']['remote']['channel']}&token={config['kvdb']['remote']['token']}")
+    response.raise_for_status()
+    data = response.json()
+    client.connection.send_event("pusher:signin", data)
+
+def onSignIn(inputChannel):
+    # 只有订阅并登录成功才算是完全建立频道连接，保存频道信息
     global channel
     channel = inputChannel
+    timeLog(f"[Remote] Sign in")
+
+def onSubscriptionSucceeded():
     timeLog(f"[Remote] Channel subscribed")
+    signin()
 
 def subscribe(server, channelName, token):
     global dashboardURL
@@ -63,9 +75,10 @@ def subscribe(server, channelName, token):
             useNew = False
             timeLog(f'[Remote] Old credential valid, using the old one')
         except:
-            timeLog(f'[Remote] Old credential invalid, using the new one')
+            pass
     if useNew:
-        response = requests.get(f"{server}/authorizeChannel?dashboard=pinglunji&version={version}&socket_id={client.connection.socket_id}&channel={channelName}&token={token}")
+        timeLog(f'[Remote] Old credential invalid, using the new one')
+        response = requests.get(f"{server}/authorizeUser?role=server&socket_id={client.connection.socket_id}&channel={channelName}&token={token}")
         response.raise_for_status()
         data = response.json()
         # 保存登录信息，供下次使用
@@ -76,9 +89,9 @@ def subscribe(server, channelName, token):
     timeLog(f'[Remote] Got credential and dashboard url from server, auth: {data["auth"]}, url: {data["url"]}')
     dashboardURL = data["url"]
     inputChannel = client.subscribe(channelName, data["auth"])
-    # 只有订阅成功才算是完全建立频道连接，保存频道信息
-    inputChannel.bind("pusher_internal:subscription_succeeded", lambda *_, **__: onSubscriptionSucceeded(inputChannel))
     inputChannel.bind("client-request", onRequest)
+    client.connection.bind("pusher:signin_success", lambda *_, **__: onSignIn(inputChannel))
+    inputChannel.bind("pusher_internal:subscription_succeeded", lambda *_, **__: onSubscriptionSucceeded())
 
 def onClientError(data):
     timeLog(f'[Remote] Error occurred: {json.dumps(data, ensure_ascii=False)}')

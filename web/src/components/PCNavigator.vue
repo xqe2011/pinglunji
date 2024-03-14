@@ -35,14 +35,14 @@
 
 <script lang="ts" setup>
 import { useRouter } from 'vue-router';
-import { onWSState } from '@/services/Database';
+import { onServerState } from '@/services/Database';
 import { ref } from 'vue';
 
 const router = useRouter();
 const websocketStatus = ref('未连接');
 
-onWSState.subscribe(data => {
-    if (data == 'connected') {
+onServerState.subscribe(ready => {
+    if (ready) {
         websocketStatus.value = '已连接';
     } else {
         websocketStatus.value = '未连接';

@@ -3,7 +3,7 @@ export class Subscriber<T extends Function>
     private callbacks: T[] = [];
     private lastCallArguemnts: any = undefined;
     
-    constructor(private replay = false) {}
+    constructor(private replay = false, private deduplicate = false) {}
 
     subscribe(callback: T) {
         if (this.replay && this.lastCallArguemnts !== undefined) {
@@ -20,7 +20,9 @@ export class Subscriber<T extends Function>
     }
 
     emit(...args: any[]) {
-        this.lastCallArguemnts = args;
-        this.callbacks.forEach(callback => callback(...args));
+        if (!this.deduplicate || JSON.stringify(this.lastCallArguemnts) !== JSON.stringify(args)) {
+            this.lastCallArguemnts = args;
+            this.callbacks.forEach(callback => callback(...args));
+        }
     }
 }

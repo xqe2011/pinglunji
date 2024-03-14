@@ -24,7 +24,7 @@
 <script lang="ts" setup>
 import PCNavigator from "./components/PCNavigator.vue";
 import router from "./router";
-import { connectLocal, connectRemote } from "./services/Database";
+import { init, connectLocal, connectRemote } from "./services/Database";
 
 router.beforeResolve((to, from, next) => {
     if (to.meta?.name) {
@@ -33,10 +33,12 @@ router.beforeResolve((to, from, next) => {
     next();
 });
 
-var url = new URL(document.URL);
-if (url.searchParams.get("channel") !== null && url.searchParams.get("url") !== null && url.searchParams.get("token") !== null) {
-    connectRemote(url.searchParams.get("url") as string, url.searchParams.get("channel") as string, url.searchParams.get("token") as string);
-} else {
-    connectLocal();
-}
+init().then(() => {
+    const url = new URL(document.URL);
+    if (url.searchParams.get("channel") !== null && url.searchParams.get("url") !== null && url.searchParams.get("token") !== null) {
+        connectRemote(url.searchParams.get("url") as string, url.searchParams.get("channel") as string, url.searchParams.get("token") as string);
+    } else {
+        connectLocal();
+    }
+});
 </script>

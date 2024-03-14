@@ -54,7 +54,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { EngineConfig } from "../types/EngineConfig";
-import { getEngineConfig, updateEngineConfig, onWSState, getRemoteURL, flushRemoteURL } from '@/services/Database';
+import { getEngineConfig, updateEngineConfig, onServerState, getRemoteURL, flushRemoteURL } from '@/services/Database';
 import copy from 'clipboard-copy';
 
 const config = ref(undefined as unknown as EngineConfig);
@@ -86,8 +86,8 @@ function onSave() {
     });
 }
 
-onWSState.subscribe(data => {
-    if (data == 'connected') {
+onServerState.subscribe(ready => {
+    if (ready) {
         getEngineConfig().then(msg => {
             config.value = msg;
         });

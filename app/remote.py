@@ -78,7 +78,7 @@ def subscribe(server, channelName, token):
             pass
     if useNew:
         timeLog(f'[Remote] Old credential invalid, using the new one')
-        response = requests.get(f"{server}/authorizeUser?role=server&socket_id={client.connection.socket_id}&channel={channelName}&token={token}")
+        response = requests.get(f"{server}/authorizeChannel?dashboard=pinglunji&version={version}&socket_id={client.connection.socket_id}&channel={channelName}&token={token}")
         response.raise_for_status()
         data = response.json()
         # 保存登录信息，供下次使用
